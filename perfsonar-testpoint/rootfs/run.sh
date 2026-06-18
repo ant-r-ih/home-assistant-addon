@@ -74,6 +74,19 @@ if [ -f "${RSYSLOG_CONF}" ]; then
   fi
 fi
 
+# --- fix /dev/log for non-systemd (supervisord) container ------------------
+# The Ubuntu base image ships /dev/log as a symlink to the systemd journal
+# socket (/run/systemd/journal/dev-log), which does not exist in this
+# supervisord-based container. While the symlink is present and dangling,
+# rsyslog cannot create its own /dev/log socket, so local syslog (logger,
+# pscheduler daemons, ...) is dropped -- and therefore never reaches the
+# syslog_target forwarder either. Remove the stale symlink so rsyslog can
+# bind a real /dev/log socket on startup.
+if [ -L /dev/log ]; then
+  rm -f /dev/log
+  log "removed stale systemd /dev/log symlink (rsyslog will recreate it)"
+fi
+
 # --- hand off to upstream supervisord (unchanged) --------------------------
 log "exec supervisord"
 exec /usr/bin/supervisord -c /etc/supervisord.conf
