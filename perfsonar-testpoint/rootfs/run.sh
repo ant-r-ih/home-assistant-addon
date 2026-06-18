@@ -76,18 +76,22 @@ fi
 
 # --- make local syslog work without touching read-only /dev ----------------
 # The Ubuntu base image ships /dev/log as a dangling symlink to the systemd
-# journal socket (/run/systemd/journal/dev-log). On the HA runtime /dev is
-# mounted read-only, so we cannot remove or replace /dev/log. Instead, make
-# rsyslog bind its input socket at the symlink's target (under /run, which is
-# writable); /dev/log then resolves to a real socket and local syslog
-# (logger, pscheduler daemons, ...) reaches rsyslog -- and the syslog_target
-# forwarder. Best-effort only: never abort startup if this fails.
-mkdir -p /run/systemd/journal 2>/dev/null || true
-if grep -q '^\$ModLoad imuxsock' /etc/rsyslog.conf \
-   && ! grep -q 'SystemLogSocketName' /etc/rsyslog.conf; then
-  sed -i 's#^\$ModLoad imuxsock#$SystemLogSocketName /run/systemd/journal/dev-log\n$ModLoad imuxsock#' \
+# journal socket (/run/systemd/journal/dev-log), and on the HA runtime /dev is
+# read-only, so we cannot remove or replace /dev/log. Instead we tell rsyslog's
+# imuxsock module to listen on the symlink's target (under /run, which is
+# writable); /dev/log then resolves to a real socket and local syslog (logger,
+# pscheduler daemons, ...) reaches rsyslog -- and the syslog_target forwarder.
+#
+# Must use the modern module() syntax: the legacy "$SystemLogSocketName"
+# directive is rejected by rsyslog 8.x ("invalid or yet-unknown config file
+# command"). Verified working in-container (v0.1.3). Best-effort: never abort
+# startup if this fails.
+DEV_LOG_SOCK="/run/systemd/journal/dev-log"
+mkdir -p "$(dirname "${DEV_LOG_SOCK}")" 2>/dev/null || true
+if grep -q '^\$ModLoad imuxsock' /etc/rsyslog.conf; then
+  sed -i "s#^\\\$ModLoad imuxsock.*#module(load=\"imuxsock\" SysSock.Name=\"${DEV_LOG_SOCK}\")#" \
     /etc/rsyslog.conf || true
-  log "set rsyslog input socket -> /run/systemd/journal/dev-log"
+  log "set rsyslog imuxsock socket -> ${DEV_LOG_SOCK}"
 fi
 
 # --- hand off to upstream supervisord (unchanged) --------------------------
