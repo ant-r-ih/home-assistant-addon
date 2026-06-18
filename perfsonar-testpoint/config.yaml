@@ -1,0 +1,56 @@
+# Home Assistant add-on: perfSONAR Testpoint
+# Docs: https://developers.home-assistant.io/docs/add-ons/configuration
+name: perfSONAR Testpoint
+version: "0.1.0"
+slug: perfsonar_testpoint
+description: >-
+  perfSONAR 5.x testpoint (pScheduler, OWAMP, TWAMP, iperf3, ...) packaged as a
+  Home Assistant add-on. Based on perfsonar/perfsonar-testpoint-docker with a
+  thin wrapper that takes the psconfig remote host and an optional syslog
+  forwarding target from the add-on configuration.
+url: "https://github.com/ant-r-ih/home-assistant-addon/tree/main/perfsonar-testpoint"
+
+# Built from ubuntu:22.04 + apt perfSONAR repo, so it builds natively per-arch.
+arch:
+  - aarch64
+
+# perfSONAR measurement traffic must reach the host directly (matches the
+# upstream `network_mode: host`).
+host_network: true
+
+# Raw sockets + timing for active measurement tools.
+privileged:
+  - NET_ADMIN
+  - NET_RAW
+
+# Persist measurement state across restarts/updates.
+map:
+  - addon_config:rw
+
+startup: services
+boot: auto
+
+# Informational with host_network: true; documents perfSONAR's listen ports.
+ports:
+  443/tcp: 443
+  861/tcp: 861
+  862/tcp: 862
+  5201/tcp: 5201
+ports_description:
+  443/tcp: pScheduler / web (HTTPS)
+  861/tcp: OWAMP control
+  862/tcp: TWAMP control
+  5201/tcp: iperf3 throughput
+
+# User-configurable options.
+#   psconfig_host : host part of the psconfig remote URL. The add-on builds
+#                   https://<psconfig_host>/psconfig/psconfig.json
+#   syslog_target : optional rsyslog forwarding target, host or host:port
+#                   (UDP, default port 514). Empty disables forwarding.
+options:
+  psconfig_host: ""
+  syslog_target: ""
+
+schema:
+  psconfig_host: "str?"
+  syslog_target: "str?"

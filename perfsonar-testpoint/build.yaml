@@ -1,0 +1,13 @@
+# Build configuration for the perfSONAR Testpoint add-on.
+#
+# NOTE: the Dockerfile pins its own base (`FROM ubuntu:22.04`) and installs
+# perfSONAR from the official apt repository, matching upstream
+# perfsonar-testpoint-docker. We therefore do NOT use build_from here; the
+# image builds natively for whatever arch the HA builder targets (aarch64),
+# provided the perfSONAR apt repo serves arm64 packages.
+labels:
+  org.opencontainers.image.title: "perfSONAR Testpoint"
+  org.opencontainers.image.source: "https://github.com/ant-r-ih/home-assistant-addon"
+  org.opencontainers.image.vendor: "Advanced Networking Technology unit, RIKEN"
+
+args: {}
