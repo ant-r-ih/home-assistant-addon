@@ -31,7 +31,7 @@ selected release.
 ## Configuration
 
 ```yaml
-psconfig_host: "172.27.160.35"
+psconfig_host: "192.0.2.1"
 syslog_target: "loghost.example.org:514"
 ```
 

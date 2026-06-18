@@ -33,7 +33,7 @@ runs with `host_network: true` and the `NET_ADMIN` / `NET_RAW` capabilities.
 ### `psconfig_host`
 
 Host part (FQDN or IP) of the psconfig remote. The add-on builds the URL as
-`https://<psconfig_host>/psconfig/psconfig.json`. Example: `172.27.160.35`.
+`https://<psconfig_host>/psconfig/psconfig.json`. Example: `192.0.2.1`.
 
 If left blank, the upstream `pscheduler-agent.json` is left untouched (empty
 `remotes`), so the agent runs but pulls no remote configuration.
