@@ -74,17 +74,20 @@ if [ -f "${RSYSLOG_CONF}" ]; then
   fi
 fi
 
-# --- fix /dev/log for non-systemd (supervisord) container ------------------
-# The Ubuntu base image ships /dev/log as a symlink to the systemd journal
-# socket (/run/systemd/journal/dev-log), which does not exist in this
-# supervisord-based container. While the symlink is present and dangling,
-# rsyslog cannot create its own /dev/log socket, so local syslog (logger,
-# pscheduler daemons, ...) is dropped -- and therefore never reaches the
-# syslog_target forwarder either. Remove the stale symlink so rsyslog can
-# bind a real /dev/log socket on startup.
-if [ -L /dev/log ]; then
-  rm -f /dev/log
-  log "removed stale systemd /dev/log symlink (rsyslog will recreate it)"
+# --- make local syslog work without touching read-only /dev ----------------
+# The Ubuntu base image ships /dev/log as a dangling symlink to the systemd
+# journal socket (/run/systemd/journal/dev-log). On the HA runtime /dev is
+# mounted read-only, so we cannot remove or replace /dev/log. Instead, make
+# rsyslog bind its input socket at the symlink's target (under /run, which is
+# writable); /dev/log then resolves to a real socket and local syslog
+# (logger, pscheduler daemons, ...) reaches rsyslog -- and the syslog_target
+# forwarder. Best-effort only: never abort startup if this fails.
+mkdir -p /run/systemd/journal 2>/dev/null || true
+if grep -q '^\$ModLoad imuxsock' /etc/rsyslog.conf \
+   && ! grep -q 'SystemLogSocketName' /etc/rsyslog.conf; then
+  sed -i 's#^\$ModLoad imuxsock#$SystemLogSocketName /run/systemd/journal/dev-log\n$ModLoad imuxsock#' \
+    /etc/rsyslog.conf || true
+  log "set rsyslog input socket -> /run/systemd/journal/dev-log"
 fi
 
 # --- hand off to upstream supervisord (unchanged) --------------------------
