@@ -141,8 +141,8 @@ pscheduler task throughput --dest <this-host>
 - **Build fails on ARM** — See the Architecture note above.
 - **`node_exporter` keeps restarting with `address already in use`** —
   something else on the host already listens on port 9100, for example the
-  SINDAN-client add-on's own exporter. Turn that off (`exporter: false` in
-  SINDAN-client); with this add-on the Wi-Fi metrics come from here.
+  Wi-Fi exporter of SINDAN-client add-on 0.1.x. Update SINDAN-client to 0.2.0
+  or later (it no longer has an exporter); the Wi-Fi metrics come from here.
 - **`sindan_wifi_scan_success` is 0** — check `wifi_interface` and that the
   interface is up (`iw dev`).
 
