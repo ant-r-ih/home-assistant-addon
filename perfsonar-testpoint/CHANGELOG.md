@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.5
+- Fix the SINDAN Wi-Fi exporter dropping all its metrics when a hidden SSID is in range: iw prints its bytes as `\xNN`, and the backslash was not escaped in the label, so node_exporter rejected the whole textfile (`node_textfile_scrape_error 1`).
+
 ## 0.1.4
 - Run perfSONAR's own `node_exporter` (host metrics at `https://<host>/node_exporter/metrics`); upstream installs it but never starts it. The systemd collector options are dropped (no systemd/dbus in the container).
 - Add the SINDAN Wi-Fi exporter (non-aggressive neighbour scan only), served through node_exporter's textfile collector. Options `wifi_exporter` (default off), `wifi_interface`, `wifi_interval`.
