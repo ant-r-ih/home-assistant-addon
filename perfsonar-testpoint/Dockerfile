@@ -57,6 +57,29 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # -----------------------------------------------------------------------------
+# Home Assistant add-on additions (not in upstream perfsonar-testpoint-docker):
+#  - run perfSONAR's own node_exporter (host metrics; upstream never starts it)
+#  - SINDAN Wi-Fi exporter (non-aggressive neighbour scan only), feeding
+#    node_exporter's textfile collector. Pinned to a sindan-client commit.
+
+ARG SINDAN_REF=1860f3e9741a01c442eb5ae1855546492e3499a9
+
+RUN apt-get update \
+    && apt-get install -y iw \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN mkdir -p /opt/sindan /var/lib/prometheus/node-exporter \
+    && curl -fsSL https://github.com/ikob/sindan-client/archive/${SINDAN_REF}.tar.gz \
+       | tar -xz -C /opt/sindan --strip-components=2 \
+           sindan-client-${SINDAN_REF}/linux/sindan_exporter.sh \
+           sindan-client-${SINDAN_REF}/linux/sindan_func1.sh
+
+COPY rootfs/node-exporter.sh /usr/local/bin/node-exporter.sh
+COPY rootfs/sindan-exporter-loop.sh /usr/local/bin/sindan-exporter-loop.sh
+RUN chmod +x /usr/local/bin/node-exporter.sh /usr/local/bin/sindan-exporter-loop.sh
+
+# -----------------------------------------------------------------------------
 
 RUN mkdir -p /var/log/supervisor 
 ADD supervisord.conf /etc/supervisord.conf
@@ -77,8 +100,8 @@ VOLUME ["/var/run", "/var/lib/pgsql", "/var/log", "/etc/rsyslog.d" ]
 
 # -----------------------------------------------------------------------------
 # Home Assistant add-on wrapper: injects HA options (psconfig_host,
-# syslog_target) into the config files above, then execs the same supervisord
-# command as upstream. This is the only change from perfsonar-testpoint-docker.
+# syslog_target, wifi_*) into the config files above, then execs the same
+# supervisord command as upstream.
 COPY rootfs/run.sh /run.sh
 RUN chmod +x /run.sh
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Home Assistant add-on wrapper for the perfSONAR testpoint container.
 #
-# This is the ONLY behavioural change vs. upstream perfsonar-testpoint-docker:
-# it reads the two HA add-on options from /data/options.json, injects them into
-# the upstream config files, then hands off to the unmodified supervisord setup.
+# It reads the HA add-on options from /data/options.json, injects them into
+# the config files, then hands off to supervisord.
 #
 #   psconfig_host   -> compose/psconfig/pscheduler-agent.json  "remotes" entry
 #                      URL template: https://<host>/psconfig/psconfig.json
 #   syslog_target   -> /etc/rsyslog.conf forwarding rule (host[:port], UDP,
 #                      default port 514). Empty => no forwarding.
+#   wifi_*          -> /etc/default/sindan-exporter (SINDAN Wi-Fi exporter)
 set -euo pipefail
 
 OPTIONS_FILE="/data/options.json"
@@ -93,6 +93,19 @@ if grep -q '^\$ModLoad imuxsock' /etc/rsyslog.conf; then
     /etc/rsyslog.conf || true
   log "set rsyslog imuxsock socket -> ${DEV_LOG_SOCK}"
 fi
+
+# --- SINDAN Wi-Fi exporter ------------------------------------------------
+# Settings for the supervisord program "sindan-exporter"; regenerated on each
+# start. Its metrics are served by node_exporter (textfile collector).
+WIFI_EXPORTER="$(get_opt '.wifi_exporter' 'false')"
+WIFI_INTERFACE="$(get_opt '.wifi_interface' 'wlan0')"
+WIFI_INTERVAL="$(get_opt '.wifi_interval' '600')"
+{
+  printf 'WIFI_EXPORTER=%q\n' "${WIFI_EXPORTER}"
+  printf 'WLAN_IF=%q\n' "${WIFI_INTERFACE}"
+  printf 'WIFI_INTERVAL=%q\n' "${WIFI_INTERVAL}"
+} > /etc/default/sindan-exporter
+log "wifi_exporter=${WIFI_EXPORTER} (interface ${WIFI_INTERFACE}, every ${WIFI_INTERVAL}s)"
 
 # --- hand off to upstream supervisord (unchanged) --------------------------
 log "exec supervisord"

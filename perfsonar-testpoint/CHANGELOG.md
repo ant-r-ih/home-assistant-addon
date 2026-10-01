@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+- Run perfSONAR's own `node_exporter` (host metrics at `https://<host>/node_exporter/metrics`); upstream installs it but never starts it. The systemd collector options are dropped (no systemd/dbus in the container).
+- Add the SINDAN Wi-Fi exporter (non-aggressive neighbour scan only), served through node_exporter's textfile collector. Options `wifi_exporter` (default off), `wifi_interface`, `wifi_interval`.
+
 ## 0.1.3
 - Fix local syslog: use modern `module(load="imuxsock" SysSock.Name=...)` syntax (the `$SystemLogSocketName` directive is rejected by rsyslog 8.x). Verified working in-container.
 

@@ -2,15 +2,16 @@
 
 This add-on packages the upstream
 [perfsonar/perfsonar-testpoint-docker](https://github.com/perfsonar/perfsonar-testpoint-docker)
-(supervisord variant) and adds a single wrapper script that injects two
-Home Assistant options into the configuration before starting the perfSONAR
-services.
+(supervisord variant) and adds a wrapper script that injects the Home
+Assistant options into the configuration before starting the perfSONAR
+services. It also starts perfSONAR's host-metrics `node_exporter` and,
+optionally, the SINDAN Wi-Fi exporter (see below).
 
 ## How it works
 
 The Dockerfile is the upstream one (builds from `ubuntu:22.04`, installs
 `perfsonar-testpoint` from the perfSONAR apt repo, runs everything under
-`supervisord`). The only addition is `rootfs/run.sh`, set as the container
+`supervisord`). The main addition is `rootfs/run.sh`, set as the container
 `CMD`. On start it:
 
 1. Reads `/data/options.json` (the add-on options).
@@ -22,11 +23,48 @@ The Dockerfile is the upstream one (builds from `ubuntu:22.04`, installs
 3. If `syslog_target` is set, appends a UDP forwarding rule to
    `/etc/rsyslog.conf`. The rule is wrapped in markers and regenerated on each
    start, so restarts never stack duplicates.
-4. Execs `/usr/bin/supervisord -c /etc/supervisord.conf` — identical to
-   upstream.
+4. Writes the `wifi_*` options to `/etc/default/sindan-exporter`.
+5. Execs `/usr/bin/supervisord -c /etc/supervisord.conf`.
 
 Because perfSONAR measurement traffic must reach the host directly, the add-on
 runs with `host_network: true` and the `NET_ADMIN` / `NET_RAW` capabilities.
+
+## Host metrics and the SINDAN Wi-Fi exporter
+
+perfSONAR publishes host metrics through Apache, and the archive's psconfig
+`hostmetrics` agent pulls them from each address:
+
+- `https://<host>/node_exporter/metrics` — `node_exporter` on
+  `localhost:9100`, with perfSONAR's options from `/etc/default/node_exporter`
+- `https://<host>/perfsonar_host_exporter/` — pScheduler / psconfig metrics
+
+Upstream installs `node_exporter` but never starts it (it relies on systemd).
+This add-on runs it under supervisord (`rootfs/node-exporter.sh`) with the same
+options, except that the systemd collector options are dropped (there is no
+systemd/dbus in the container), and with node_exporter's textfile collector
+reading `/var/lib/prometheus/node-exporter`.
+
+With `wifi_exporter: true`, the supervisord program `sindan-exporter` runs
+SINDAN's `sindan_exporter.sh` (from
+[sindan-client](https://github.com/ikob/sindan-client), pinned by the
+`SINDAN_REF` build argument) every `wifi_interval` seconds. It writes
+`sindan_wifi.prom` into the textfile directory, so the `sindan_wifi_*` metrics
+come out of the same `/node_exporter/metrics` endpoint as the host metrics; the
+archive needs no extra target. Only SINDAN's non-aggressive measurement is
+included: it reads the kernel's BSS cache (`iw dev <if> scan dump`) and
+triggers a real scan only if the cache is empty, so the interval also caps
+how often a real scan is triggered.
+
+| Metric | Description |
+| --- | --- |
+| `sindan_wifi_neighbor_rssi_dbm{ifname,bssid,ssid,mode,band,channel,bandwidth,security}` | RSSI of each neighbour AP |
+| `sindan_wifi_neighbors{ifname}` | number of neighbour APs |
+| `sindan_wifi_scan_success{ifname}` | 1 if the latest collection returned APs |
+| `sindan_wifi_scan_triggered{ifname}` | 1 if a real scan had to be triggered |
+| `sindan_wifi_scan_timestamp_seconds{ifname}` | time of the last successful collection |
+
+Note that the neighbour SSIDs/BSSIDs become visible to whoever can read
+`/node_exporter/metrics`.
 
 ## Options
 
@@ -47,6 +85,18 @@ Optional rsyslog forwarding target. Accepts:
 
 Example: `loghost.example.org` or `192.0.2.10:5514`. Forwarding uses UDP
 (`*.* @host:port`). Leave blank to disable.
+
+### `wifi_exporter`
+
+Run the SINDAN Wi-Fi exporter (default `false`).
+
+### `wifi_interface`
+
+Wi-Fi interface to scan (default `wlan0`). It does not need to be associated.
+
+### `wifi_interval`
+
+Seconds between collections (default `600`, minimum `60`).
 
 ## Ports
 
@@ -89,6 +139,12 @@ pscheduler task throughput --dest <this-host>
 - **No logs at the remote collector** — Confirm `syslog_target` is set, the
   collector listens on UDP, and the host firewall permits the traffic.
 - **Build fails on ARM** — See the Architecture note above.
+- **`node_exporter` keeps restarting with `address already in use`** —
+  something else on the host already listens on port 9100, for example the
+  SINDAN-client add-on's own exporter. Turn that off (`exporter: false` in
+  SINDAN-client); with this add-on the Wi-Fi metrics come from here.
+- **`sindan_wifi_scan_success` is 0** — check `wifi_interface` and that the
+  interface is up (`iw dev`).
 
 ## Credits
 
