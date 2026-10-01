@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.6
+- Fix 0.1.5: the SINDAN Wi-Fi exporter failed with a shell syntax error and wrote no metrics.
+
 ## 0.1.5
 - Fix the SINDAN Wi-Fi exporter dropping all its metrics when a hidden SSID is in range: iw prints its bytes as `\xNN`, and the backslash was not escaped in the label, so node_exporter rejected the whole textfile (`node_textfile_scrape_error 1`).
 

@@ -62,7 +62,7 @@ RUN apt-get update \
 #  - SINDAN Wi-Fi exporter (non-aggressive neighbour scan only), feeding
 #    node_exporter's textfile collector. Pinned to a sindan-client commit.
 
-ARG SINDAN_REF=ff73abc62559567874af8a680a557493a5e65741
+ARG SINDAN_REF=69701204801ec45504ac4cfc3309a24802b83c21
 
 RUN apt-get update \
     && apt-get install -y iw \
