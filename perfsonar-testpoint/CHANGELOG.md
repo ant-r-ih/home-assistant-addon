@@ -1,3 +1,8 @@
+## 0.1.7
+
+- Publish a prebuilt ARM64 image to GHCR; HAOS installs no longer build on the SD card.
+- Add an ARM64 CI build and packaged-tool smoke test.
+
 # Changelog
 
 ## 0.1.6

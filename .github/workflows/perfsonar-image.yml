@@ -1,0 +1,69 @@
+name: Build perfSONAR ARM64 image
+on:
+  push:
+    branches: [main, prebuilt-perfsonar]
+    paths: ["perfsonar-testpoint/**", ".github/workflows/perfsonar-image.yml"]
+  pull_request:
+    paths: ["perfsonar-testpoint/**", ".github/workflows/perfsonar-image.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: perfsonar-image-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version: "\([0-9.]*\)"$/\1/p' perfsonar-testpoint/config.yaml)
+          test -n "$version"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: perfsonar-testpoint
+          platforms: linux/arm64
+          load: true
+          tags: ghcr.io/ant-r-ih/perfsonar-testpoint:${{ steps.version.outputs.value }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.value }}
+            BUILD_ARCH=aarch64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test packaged tools
+        env:
+          IMAGE: ghcr.io/ant-r-ih/perfsonar-testpoint:${{ steps.version.outputs.value }}
+        run: |
+          docker run --rm --entrypoint /bin/bash "$IMAGE" -ec '
+            test "$(dpkg --print-architecture)" = arm64
+            command -v pscheduler
+            command -v iperf3
+            command -v supervisord
+            bash -n /run.sh
+            bash -n /usr/local/bin/node-exporter.sh
+            bash -n /usr/local/bin/sindan-exporter-loop.sh
+          '
+      - name: Publish versioned image
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE: ghcr.io/ant-r-ih/perfsonar-testpoint:${{ steps.version.outputs.value }}
+        run: |
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "Version tag already exists; not overwriting $IMAGE"
+            exit 0
+          fi
+          docker push "$IMAGE"

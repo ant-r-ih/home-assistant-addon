@@ -1,7 +1,8 @@
 # Home Assistant add-on: perfSONAR Testpoint
 # Docs: https://developers.home-assistant.io/docs/add-ons/configuration
 name: perfSONAR Testpoint
-version: "0.1.6"
+version: "0.1.7"
+image: "ghcr.io/ant-r-ih/perfsonar-testpoint"
 slug: perfsonar_testpoint
 description: >-
   perfSONAR 5.x testpoint (pScheduler, OWAMP, TWAMP, iperf3, ...) packaged as a
@@ -10,7 +11,7 @@ description: >-
   forwarding target from the add-on configuration.
 url: "https://github.com/ant-r-ih/home-assistant-addon/tree/main/perfsonar-testpoint"
 
-# Built from ubuntu:22.04 + apt perfSONAR repo, so it builds natively per-arch.
+# Prebuilt ARM64 image; Supervisor pulls the version tag without local builds.
 arch:
   - aarch64
 

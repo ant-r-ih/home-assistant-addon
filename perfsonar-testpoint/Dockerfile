@@ -2,6 +2,16 @@
 
 FROM ubuntu:22.04
 
+ARG BUILD_VERSION
+ARG BUILD_ARCH=aarch64
+LABEL io.hass.name="perfSONAR Testpoint" \
+      io.hass.description="perfSONAR Testpoint for Home Assistant" \
+      io.hass.type="addon" \
+      io.hass.version="${BUILD_VERSION}" \
+      io.hass.arch="${BUILD_ARCH}" \
+      org.opencontainers.image.source="https://github.com/ant-r-ih/home-assistant-addon" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+
 ENV container=docker
 ENV LC_ALL=C
 ENV DEBIAN_FRONTEND=noninteractive

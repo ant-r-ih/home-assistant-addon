@@ -119,7 +119,7 @@ this host.
 
 The image installs perfSONAR from the apt repository at build time rather than
 pulling a prebuilt `perfsonar/testpoint` image, so it can build natively for
-arm64. If the build fails fetching packages, confirm the perfSONAR apt
+arm64. If the CI build fails fetching packages, confirm the perfSONAR apt
 repository serves arm64 for the Ubuntu release used in the Dockerfile.
 
 ## Testing
@@ -152,3 +152,21 @@ Based on perfsonar/perfsonar-testpoint-docker (Apache-2.0). See the bundled
 `LICENSE`.
 
 Maintainer: Katsushi Kobayashi &lt;ikob@riken.org&gt;
+
+## Prebuilt image distribution
+
+Version 0.1.7 and later use `ghcr.io/ant-r-ih/perfsonar-testpoint:<version>`.
+GitHub Actions builds on a native ARM64 runner and checks packaged tools before
+publishing. Supervisor pulls the image instead of building on the device.
+Runtime options and networking are unchanged.
+
+Before merging a version bump, confirm its image was published successfully and
+make the GHCR package public in package settings. New GHCR packages may default
+to private even when the source repository is public. Test an anonymous pull.
+Never replace a published version tag; increment config.yaml's version instead.
+The workflow refuses to push over an existing tag. PR builds do not publish.
+
+For initial publication, the `prebuilt-perfsonar` branch also triggers publishing.
+After validating the package, merge the branch into main. An image build is not
+a full perfSONAR service test; validate measurement endpoints on a test device
+before fleet deployment.
